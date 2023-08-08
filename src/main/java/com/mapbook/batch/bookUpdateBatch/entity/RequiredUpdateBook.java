@@ -53,7 +53,7 @@ public class RequiredUpdateBook {
     private String publisher;
 
     @Column(name = "notFound")
-    private Boolean notFound;
+    private Boolean notFound = false;
 
     public RequiredUpdateBook() {
     }
