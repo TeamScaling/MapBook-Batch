@@ -2,11 +2,11 @@ package com.mapbook.batch.libraryCatalogBatch.batchConfig;
 
 import com.mapbook.batch.libraryCatalogBatch.chunck.LibraryCatalogWriter;
 import com.mapbook.batch.libraryCatalogBatch.domain.LibraryCatalog;
+import com.mapbook.batch.libraryCatalogBatch.task.DownLoadFileClearTask;
+import com.mapbook.batch.libraryCatalogBatch.util.CsvFileMerger;
 import com.mapbook.batch.libraryCatalogBatch.util.LibraryCatalogAggregator;
 import com.mapbook.batch.libraryCatalogBatch.util.LibraryCatalogNormalizer;
 import com.mapbook.batch.libraryCatalogBatch.util.download.LibraryCatalogDownloader;
-import com.mapbook.batch.libraryCatalogBatch.util.CsvFileMerger;
-import com.mapbook.batch.libraryCatalogBatch.task.DownLoadFileClearTask;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -32,6 +32,8 @@ public class LoanCntUpdateBatchConfig {
     private final LibraryCatalogWriter libraryCatalogWriter;
     private final DownLoadFileClearTask downLoadFileClearTask;
 
+    private static final int GROUP_SIZE = 100;
+
     @Bean
     public Job libraryCatalogBatch() {
         return jobBuilderFactory.get("updateLoanCntJob")
@@ -44,14 +46,18 @@ public class LoanCntUpdateBatchConfig {
             .next(fileClearStep())
             .build();
     }
+
     @Bean
     @JobScope
-    public Step downloadStep(@Value("#{jobParameters['downLoadDate']}")String downLoadDate) {
-        System.out.println(downLoadDate);
+    public Step downloadStep(@Value("#{jobParameters['downLoadDate']}") String downLoadDate) {
         return stepBuilderFactory.get("downloadStep")
             .tasklet((contribution, chunkContext) -> {
                 libraryCatalogDownloader.downLoad(
-                    "pipe/download", downLoadDate, true, 10);
+                    "pipe/download",
+                    downLoadDate.replaceAll("\"", ""),
+                    false,
+                    -1
+                );
                 return RepeatStatus.FINISHED;
             }).build();
     }
@@ -72,7 +78,7 @@ public class LoanCntUpdateBatchConfig {
                 LibraryCatalogAggregator.aggregateLoanCnt(
                     "pipe/normalizeStep",
                     "pipe/aggregatingStep/aggregate",
-                    100);
+                    GROUP_SIZE);
                 return RepeatStatus.FINISHED;
             }).build();
     }
@@ -97,7 +103,7 @@ public class LoanCntUpdateBatchConfig {
                 LibraryCatalogAggregator.aggregateLoanCnt(
                     "pipe/mergingStep",
                     "pipe/endStep/end",
-                    100);
+                    GROUP_SIZE);
                 return RepeatStatus.FINISHED;
             }).build();
     }
@@ -113,7 +119,7 @@ public class LoanCntUpdateBatchConfig {
     }
 
     @Bean
-    public FlatFileItemReader<LibraryCatalog> aggregatedFileReader(){
+    public FlatFileItemReader<LibraryCatalog> aggregatedFileReader() {
         return new FlatFileItemReaderBuilder<LibraryCatalog>()
             .name("flatFileLibCatalog")
             .resource(new FileSystemResource("pipe/endStep/end_0.csv"))
@@ -125,7 +131,7 @@ public class LoanCntUpdateBatchConfig {
     }
 
     @Bean
-    public Step fileClearStep(){
+    public Step fileClearStep() {
         return stepBuilderFactory.get("clearStep")
             .tasklet(downLoadFileClearTask)
             .build();

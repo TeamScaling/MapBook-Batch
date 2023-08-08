@@ -35,4 +35,5 @@ public class DownLoadFileClearTask implements Tasklet {
         }
         return RepeatStatus.FINISHED;
     }
+
 }
