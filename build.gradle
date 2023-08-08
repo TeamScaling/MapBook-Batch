@@ -37,6 +37,9 @@ dependencies {
     implementation 'org.apache.commons:commons-csv:1.8'
     implementation group: 'org.json', name: 'json', version: '20220924'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.1'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    // https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
+    implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.2'
 }
 
 tasks.named('test') {
